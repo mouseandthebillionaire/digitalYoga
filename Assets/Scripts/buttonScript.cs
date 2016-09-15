@@ -31,8 +31,8 @@ public class buttonScript : MonoBehaviour {
 	}
 
 	void Start () {
-		sWidth = Screen.width - 20;
-		sHeight = Screen.height - 20;
+		sHeight = Screen.height;
+		sWidth = Screen.width - 40;
 		buttonWidth = sWidth / columns;
 		buttonHeight = sHeight / rows;
 
@@ -44,7 +44,8 @@ public class buttonScript : MonoBehaviour {
 			for(int j=0; j < rows; j++){
 
 				GameObject go = GameObject.Instantiate(b) as GameObject;
-				Vector3 pos = new Vector3(buttonWidth * i + 10, buttonHeight * j + 10, 0);
+//				Vector3 pos = new Vector3(buttonWidth * i + 10, buttonHeight * j + 10, 0);
+				Vector3 pos = new Vector3(buttonWidth * i, buttonHeight * j, 0);
 				go.transform.parent = buttonCanvas;
 				if(j == 1){
 					if(i == 2){

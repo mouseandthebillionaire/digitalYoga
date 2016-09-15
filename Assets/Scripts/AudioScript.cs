@@ -5,7 +5,10 @@ using UnityEngine.Audio;
 
 public class AudioScript : MonoBehaviour {
 
+	// Don't forget to make this sound better
+
 	//Audio
+	// Finn is cool
 	public AudioSource				yup;
 	public AudioClip[]				yMelodies;
 
