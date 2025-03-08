@@ -47,7 +47,7 @@ public class GameManagerScript : MonoBehaviour {
 
 	private IEnumerator SessionStarting(){
 		// Use this to set up the new Session
-		UIscript.S.FadeIn();
+		// UIscript.S.FadeIn();
 		AudioScript.S.Welcome();
 		yield return startWait;
 	}
@@ -88,8 +88,9 @@ public class GameManagerScript : MonoBehaviour {
 	}
 
 	public void StartGame(){
+		Debug.Log ("Starting game");
+		SessionStarting();
 		sessionActive = true;
-		homeScreen = false;
 	}
 
 

@@ -3,7 +3,6 @@ Audio/
 
 # Mouse & the Billionaire general organizational, third party, and hidden files
 ProjectFiles/
-Builds/
 ThirdParty/
 Hidden/
 .env
