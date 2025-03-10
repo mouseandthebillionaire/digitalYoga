@@ -52,7 +52,6 @@ public class HomeScreen : MonoBehaviour
 			yield return null;
 		}
 		this.gameObject.SetActive (false);
-        GameManagerScript.S.homeScreen = false;
         GameManagerScript.S.StartGame();
 		yield break;
 	}
