@@ -68,6 +68,8 @@ public class GameManagerScript : MonoBehaviour {
 		if (isTransitioning) yield break;
 		isTransitioning = true;
 
+		ComboScript.S.ChangeCombo();
+
 		AudioScript.S.Welcome();
 		yield return startWait;
 

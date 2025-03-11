@@ -12,7 +12,12 @@ public class ControlScript : MonoBehaviour {
 	*/
 
 	public int						rows, columns;
+	public float					topBuffer = 60f;     // Buffer from top of screen
+	public float					bottomBuffer = 60f;   // Buffer from bottom of screen
+	public float					leftBuffer = 40f;     // Buffer from left of screen
+	public float					rightBuffer = 40f;    // Buffer from right of screen
 	private float					sWidth, sHeight, buttonWidth, buttonHeight;
+	private float					usableWidth, usableHeight;
 
 	// Button
 	public GameObject				b;
@@ -24,9 +29,6 @@ public class ControlScript : MonoBehaviour {
 
 
 	private GameObject[,]			Grid;
-
-
-	public string[]                 ButtonCode = { "b", "v", "c", "x", "z", "g", "f", "d", "s", "a", "t", "r", "e", "w", "q" };
 	public string[]					combo;
 
 	//Audio
@@ -41,10 +43,14 @@ public class ControlScript : MonoBehaviour {
 	}
 
 	void Start () {
-		sHeight = Screen.height - 60f;
+		// Calculate usable screen dimensions after applying buffers
+		sHeight = Screen.height;
 		sWidth = Screen.width;
-		buttonWidth = sWidth / columns;
-		buttonHeight = sHeight / rows;
+		usableWidth = sWidth - (leftBuffer + rightBuffer);
+		usableHeight = sHeight - (topBuffer + bottomBuffer);
+		
+		buttonWidth = usableWidth / columns;
+		buttonHeight = usableHeight / rows;
 
 		buttonCanvas = GameObject.Find("buttonGrid").transform;
 
@@ -54,10 +60,13 @@ public class ControlScript : MonoBehaviour {
 			for(int j=0; j < rows; j++){
 
 				GameObject go = GameObject.Instantiate(b) as GameObject;
-				Vector3 pos = new Vector3(buttonWidth * i, buttonHeight * j, 0);
+				
+				// Calculate position with buffers
+				float xPos = leftBuffer + (buttonWidth * i);
+				float yPos = bottomBuffer + (buttonHeight * j);
+				Vector3 pos = new Vector3(xPos, yPos, 0);
 
-
-				go.transform.SetParent (buttonCanvas);
+				go.transform.SetParent(buttonCanvas);
 
 				go.GetComponent<RectTransform>().sizeDelta = new Vector2(buttonWidth, buttonHeight);
 				go.transform.position = pos;
@@ -69,38 +78,34 @@ public class ControlScript : MonoBehaviour {
 		}
 	}
 
-	public void Add(string b){
+	public void Add(string buttonNum){
 		numPressed += 1;
 		combo = ComboScript.S.currCombo;
-		string bta = ButtonCode[int.Parse (b)];
-		buttonsPressed.Add (bta);
-		if (System.Array.IndexOf (combo, bta) != -1) {
+		buttonsPressed.Add(buttonNum);
+		if (System.Array.IndexOf(combo, buttonNum) != -1) {
 			numRight++;
-			mallets.PlayOneShot (mNotes [numRight]);
+			mallets.PlayOneShot(mNotes[numRight]);
 		} else {
-			nope.Play ();
+			nope.Play();
 		}
 		if (numPressed == combo.Length) {
 			if (numRight == combo.Length) {
 				// Increase the score
 				ScoreScript.S.Score(1);
 			} else {
-				// Deacrease the score!
+				// Decrease the score!
 				ScoreScript.S.Score(-1); 
 			}
 		}
-
 	}
 
-
-	public void Remove(string b){
-		string btr = ButtonCode[int.Parse(b)];
-		if(System.Array.IndexOf(combo, btr) != -1){
+	public void Remove(string buttonNum){
+		if(System.Array.IndexOf(combo, buttonNum) != -1){
 			if(numRight > 0) numRight--;
 		}
 		if (numPressed > 0) {
 			numPressed -= 1;
-			buttonsPressed.Remove(btr);
+			buttonsPressed.Remove(buttonNum);
 		}
 	}
 
@@ -108,8 +113,11 @@ public class ControlScript : MonoBehaviour {
 		numRight = 0;
 		numPressed = 0;
 		buttonsPressed.Clear();
-		circleGridScript.S.Reset ();
+		
+		// Broadcast Reset message to all circle scripts
+		buttonCanvas.BroadcastMessage("Reset", SendMessageOptions.DontRequireReceiver);
 	}
+
 
 
 }

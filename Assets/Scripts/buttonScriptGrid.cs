@@ -13,8 +13,6 @@ public class buttonScriptGrid : MonoBehaviour {
 	public int 						numButtons = 15;
 	public GameObject[]				btns;
 
-
-	public string[]					ButtonCode = { "b","v","c","x","z","g","f","d","s","a","t","r","e","w","q" };
 	public string[]					combo;
 
 	public static 					buttonScriptGrid S;
@@ -40,27 +38,29 @@ public class buttonScriptGrid : MonoBehaviour {
 		Debug.Log(buttonsPressed[0]);
 	}
 
-	public void Add(string b){
-		string bta = ControlScript.S.ButtonCode[int.Parse (b)];
-		if(System.Array.IndexOf(ControlScript.S.combo, bta) != -1){
+	public void Add(string buttonNum){
+		if(System.Array.IndexOf(ComboScript.S.currCombo, buttonNum) != -1){
 			numRight++;
 		}
-		buttonsPressed.Add (bta);
+		buttonsPressed.Add(buttonNum);
 	}
 
-	public void Remove(string b){
-		string btr = ButtonCode[int.Parse(b)];
-		if(System.Array.IndexOf(combo, btr) != -1){
+	public void Remove(string buttonNum){
+		if(System.Array.IndexOf(combo, buttonNum) != -1){
 			if(numRight > 0) numRight--;
 		}
-		if (numPressed > 0) buttonsPressed.Remove(btr);
+		if (numPressed > 0) buttonsPressed.Remove(buttonNum);
 	}
 
 	public void Reset(){
 		numRight = 0;
 		numPressed = 0;
 		buttonsPressed.Clear();
+		
+		// Find the buttonGrid parent and broadcast reset to all circle scripts
+		GameObject buttonGrid = GameObject.Find("buttonGrid");
+		if (buttonGrid != null) {
+			buttonGrid.BroadcastMessage("Reset", SendMessageOptions.DontRequireReceiver);
+		}
 	}
-
-
 }

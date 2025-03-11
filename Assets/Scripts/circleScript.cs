@@ -1,16 +1,19 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
 public class circleScript : MonoBehaviour {
 
 	public float				minSize;
+	public float				growSpeed;
+	public float				opacitySpeed;
+	public float				opacityMin = 0.5f;
 
 	private bool				pressed; 
+	private bool             isActive;
 	private float				size;
 	private float 				opacity;
-	private float 				c = 1f;
-	private Material			m;
+	private Image				img;
 
 	public static circleScript 	S;
 
@@ -18,71 +21,76 @@ public class circleScript : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		S = this;
-		pressed = false;
-		opacity = 1f;
-		m = this.GetComponent<Renderer> ().material;
+		img = this.GetComponent<Image> ();
 		Reset ();
 	}
 
 	public void Down(){
 		pressed = true;
-		c = 1;
 		StartCoroutine (Hold ());
 	}
 
 	private IEnumerator Hold(){
 		size = minSize;
 		while (pressed) {
-			size += (Time.deltaTime * .075f);
-			opacity -= (Time.deltaTime * .075f);
+			size += (Time.deltaTime * growSpeed);
+			if (isActive) {
+				opacity = Mathf.Max(opacityMin, opacity - (Time.deltaTime * opacitySpeed));
+			}
 			this.transform.localScale = new Vector3 (size, size, 1);
-			m.color = new Color (c, c, c, opacity);
+			img.color = new Color (1f, 1f, 1f, opacity);
 			yield return null;
 		}
 		yield break;
 	}			
 
 	public void Wrong(){
-//		c = 0;
-//		m.color = new Color (c, c, c, 1);
+		StartCoroutine (WrongFeedback ());
+	}
+
+	private IEnumerator WrongFeedback(){
+		Color originalColor = img.color;
+		img.color = new Color (1f, 0.3f, 0.3f, originalColor.a);
+		yield return new WaitForSeconds (0.2f);
+		img.color = originalColor;
 	}
 
 	public void Up(){
 		pressed = false;
-		// c = 1f;
 		if(size >= minSize) StartCoroutine (Release ());
 	}
 
 	private IEnumerator Release(){
 		while (size > minSize) {
 			size -= (Time.deltaTime * 2f);
-			opacity += (Time.deltaTime * 2f);
+			opacity = isActive ? 1f : opacityMin;
 			this.transform.localScale = new Vector3 (size, size, 1);
-			m.color = new Color (c, c, c, opacity);
+			img.color = new Color (1f, 1f, 1f, opacity);
 			yield return null;
 		}
 		this.transform.localScale = new Vector3 (minSize, minSize, 1);
+		UpdateOpacity();
 		yield break;
 	}
 
 	public void Reset(){
 		pressed = false;
-		c = 1f;
-		opacity = 0.3f;
-		this.transform.localScale = new Vector3 (minSize, minSize, 1);
-		StartCoroutine (Assess ());
+		size = minSize;
+		this.transform.localScale = new Vector3(minSize, minSize, 1);
 	}
 
-	private IEnumerator Assess(){
-		yield return new WaitForSeconds (0.5f);
-		// Assess if you exist in the new combo
-		string bta = ControlScript.S.ButtonCode [int.Parse (this.name)];
-		if (System.Array.IndexOf (ComboScript.S.currCombo, bta) != -1) {
-			opacity = 1f;
-		} else {
-			opacity = 0.3f;
-		} 
-		m.color = new Color (1, 1, 1, opacity);
-		yield break;
+	public void SetActive() {
+		isActive = true;
+		UpdateOpacity();
+	}
+
+	public void SetInactive() {
+		isActive = false;
+		UpdateOpacity();
+	}
+
+	private void UpdateOpacity() {
+		opacity = isActive ? 1f : opacityMin;
+		img.color = new Color (1f, 1f, 1f, opacity);
 	}
 }

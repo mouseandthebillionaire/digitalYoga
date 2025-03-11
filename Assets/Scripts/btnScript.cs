@@ -7,10 +7,11 @@ public class btnScript : MonoBehaviour {
 	public string				name;
 	public bool					on;
 	public GameObject			b;
-	public Color[]				colors;
-	public Color				currColor;
+	//public Color[]			colors;
+	//public Color				currColor;
 	private int 				currComboNum;
-	public string               buttonLetter;
+
+	public GameObject			ring;
 
 	static public btnScript		S;
 
@@ -19,8 +20,7 @@ public class btnScript : MonoBehaviour {
 		b = this.gameObject;
 		name = b.name;
 		on = false;
-		currColor = colors[0];
-	    buttonLetter = ControlScript.S.ButtonCode[int.Parse(name)];
+		//currColor = colors[0];
 	}
 
 	public void Down(){
@@ -28,12 +28,11 @@ public class btnScript : MonoBehaviour {
 		currComboNum = ComboScript.poseNum;
 
 		ControlScript.S.Add(name);
-		if(System.Array.IndexOf(ControlScript.S.combo, buttonLetter) != -1){
-			circleGridScript.S.Press (name);
-			currColor = colors[1];
+		if(System.Array.IndexOf(ControlScript.S.combo, name) != -1){
+			ring.GetComponent<circleScript>().Down();
+			//currColor = colors[1];
 		} else {
-			circleGridScript.S.Wrong (name);
-			currColor = colors[2];
+			//currColor = colors[2];
 		}
 	}
 
@@ -41,14 +40,15 @@ public class btnScript : MonoBehaviour {
 		// Are we still in the same combo
 		int thisComboNum = ComboScript.poseNum;
 		if (thisComboNum == currComboNum) {
-			ControlScript.S.Remove (name);
-			circleGridScript.S.Unpress (name);
-			currColor = colors [0];
+			ControlScript.S.Remove(name);
+			ring.GetComponent<circleScript>().Up();
+			//currColor = colors [0];
 		}
 		// otherwise don't do anything
 	}
 
 	public void Reset(){
-		currColor = colors[0];
+		//currColor = colors[0];
+		ring.GetComponent<circleScript>().Up();
 	}
 }
