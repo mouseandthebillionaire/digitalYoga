@@ -65,12 +65,13 @@ public class GameManagerScript : MonoBehaviour {
 	}
 
 	private IEnumerator SessionStarting(){
+
 		if (isTransitioning) yield break;
 		isTransitioning = true;
 
 		ComboScript.S.ChangeCombo();
 
-		AudioScript.S.Welcome();
+		// Maybe text here to introduce the pose?
 		yield return startWait;
 
 		currentState = GameState.Active;

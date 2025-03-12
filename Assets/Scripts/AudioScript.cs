@@ -11,6 +11,7 @@ public class AudioScript : MonoBehaviour {
 	public AudioSource				yup;
 	public AudioClip[]				yMelodies;
 	public AudioSource				vocal;
+	public AudioSource				drone;
 	public AudioClip[]				poseIntros;
 
 	//public AudioClip[]              poseNames;
@@ -36,7 +37,7 @@ public class AudioScript : MonoBehaviour {
 
 	void Update() {
 		state = GameManagerScript.S.poseState;
-		yL = ComboScript.currPose;
+		yL = Random.Range(0, yMelodies.Length);
 
 		switch(state){
 		case 0:
@@ -51,8 +52,14 @@ public class AudioScript : MonoBehaviour {
 		}
 	}
 
-	public void Welcome(){
+	public IEnumerator Welcome(){
 		Debug.Log ("Welcome to Digital Yoga");
+		float droneVol = 0f;
+		while (droneVol < 0.5f){
+			droneVol += Time.deltaTime * 0.05f;
+			drone.volume = droneVol;
+			yield return null;
+		}
 	}
     
 	public void IntroducePose(int poseNum){

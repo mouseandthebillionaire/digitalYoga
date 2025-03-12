@@ -39,6 +39,7 @@ public class HomeScreen : MonoBehaviour
 	public void FadeOut(){
 		//homeScreenOverlay.gameObject.SetActive (false);
 		StartCoroutine (FadeOutHomeScreen(0));
+		StartCoroutine(AudioScript.S.Welcome());
 	}
 		
 	private IEnumerator FadeOutHomeScreen(int fadeDest){
