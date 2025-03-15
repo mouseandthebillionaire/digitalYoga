@@ -13,8 +13,8 @@ public class FingerScript : MonoBehaviour {
 
 	public GameObject			ring;
 	private Collider2D          collider;
-	private bool                isPressed = false;
-	private int                 trackingTouchId = -1;  // -1 means no touch being tracked
+	private HashSet<int>        trackingTouchIds = new HashSet<int>();  // Track multiple touches
+	private int                 activeTouchCount = 0;  // Count of active touches on this location
 
 	static public FingerScript		S;
 
@@ -31,34 +31,31 @@ public class FingerScript : MonoBehaviour {
 		Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 		
 		if (Input.GetMouseButtonDown(0)) {
-			if (!isPressed && collider.OverlapPoint(mouseWorldPos)) {
-				isPressed = true;
-				trackingTouchId = -1;  // Use -1 for mouse
+			if (collider.OverlapPoint(mouseWorldPos)) {
+				activeTouchCount++;
 				ring.GetComponent<RingScript>().Down();
 				Debug.Log("Mouse Down");
 			}
 		}
 		else if (Input.GetMouseButton(0)) {
-			if (isPressed && trackingTouchId == -1) {  // Only check if we're tracking mouse
+			if (activeTouchCount > 0) {  // Only check if we're tracking mouse
 				if (!collider.OverlapPoint(mouseWorldPos)) {
-					isPressed = false;
-					ring.GetComponent<RingScript>().Up();
+					activeTouchCount--;
+					if (activeTouchCount == 0) {
+						ring.GetComponent<RingScript>().Up();
+					}
 					Debug.Log("Mouse Exit While Moving");
 				} else {
 					Debug.Log("Mouse Still Pressed Over Location");
 				}
-			} else if (!isPressed && collider.OverlapPoint(mouseWorldPos)) {
-				// Handle case where mouse entered location while held down
-				isPressed = true;
-				trackingTouchId = -1;
-				ring.GetComponent<RingScript>().Down();
-				Debug.Log("Mouse Entered While Held");
 			}
 		}
 		else if (Input.GetMouseButtonUp(0)) {
-			if (isPressed && trackingTouchId == -1) {  // Only check if we're tracking mouse
-				isPressed = false;
-				ring.GetComponent<RingScript>().Up();
+			if (activeTouchCount > 0) {  // Only check if we're tracking mouse
+				activeTouchCount--;
+				if (activeTouchCount == 0) {
+					ring.GetComponent<RingScript>().Up();
+				}
 				Debug.Log("Mouse Up");
 			}
 		}
@@ -70,36 +67,39 @@ public class FingerScript : MonoBehaviour {
 
 			switch (touch.phase) {
 				case TouchPhase.Began:
-					if (!isPressed && collider.OverlapPoint(touchWorldPos)) {
-						isPressed = true;
-						trackingTouchId = touch.fingerId;
+					if (collider.OverlapPoint(touchWorldPos)) {
+						trackingTouchIds.Add(touch.fingerId);
+						activeTouchCount++;
 						ring.GetComponent<RingScript>().Down();
-						Debug.Log("Touch Down");
+						Debug.Log($"Touch Down (ID: {touch.fingerId}, Total: {activeTouchCount})");
 					}
 					break;
 
 				case TouchPhase.Moved:
 				case TouchPhase.Stationary:
-					if (isPressed && touch.fingerId == trackingTouchId) {
-						// If finger moved off the location while pressed, trigger Up
+					if (trackingTouchIds.Contains(touch.fingerId)) {
 						if (!collider.OverlapPoint(touchWorldPos)) {
-							isPressed = false;
-							trackingTouchId = -1;
-							ring.GetComponent<RingScript>().Up();
-							Debug.Log("Touch Exit While Moving");
+							trackingTouchIds.Remove(touch.fingerId);
+							activeTouchCount--;
+							if (activeTouchCount == 0) {
+								ring.GetComponent<RingScript>().Up();
+							}
+							Debug.Log($"Touch Exit While Moving (ID: {touch.fingerId}, Total: {activeTouchCount})");
 						} else {
-							Debug.Log("Touch Still Over Location");
+							Debug.Log($"Touch Still Over Location (ID: {touch.fingerId}, Total: {activeTouchCount})");
 						}
 					}
 					break;
 
 				case TouchPhase.Ended:
 				case TouchPhase.Canceled:
-					if (isPressed && touch.fingerId == trackingTouchId) {
-						isPressed = false;
-						trackingTouchId = -1;
-						ring.GetComponent<RingScript>().Up();
-						Debug.Log("Touch Up");
+					if (trackingTouchIds.Contains(touch.fingerId)) {
+						trackingTouchIds.Remove(touch.fingerId);
+						activeTouchCount--;
+						if (activeTouchCount == 0) {
+							ring.GetComponent<RingScript>().Up();
+						}
+						Debug.Log($"Touch Up (ID: {touch.fingerId}, Total: {activeTouchCount})");
 					}
 					break;
 			}
@@ -108,25 +108,23 @@ public class FingerScript : MonoBehaviour {
 
 	public void Reset(){
 		//currColor = colors[0];
-		isPressed = false;
-		trackingTouchId = -1;
+		trackingTouchIds.Clear();
+		activeTouchCount = 0;
 		ring.GetComponent<RingScript>().Up();
 	}
 
 	// These methods can stay for compatibility with existing code, but they'll be called less frequently
 	public void Up() {
-		if (isPressed) {
-			isPressed = false;
-			trackingTouchId = -1;
-			ring.GetComponent<RingScript>().Up();
-		}
+		trackingTouchIds.Clear();
+		activeTouchCount = 0;
+		ring.GetComponent<RingScript>().Up();
 	}
 
 	public void OnLocationMoveStart() {
-		// No need for special handling - Update will handle touch tracking
+		// No special handling needed - Update will handle touch tracking
 	}
 
 	public void OnLocationMoveComplete() {
-		// No need for special handling - Update will handle touch tracking
+		// No special handling needed - Update will handle touch tracking
 	}
 }
