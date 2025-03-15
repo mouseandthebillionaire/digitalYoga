@@ -79,10 +79,11 @@ public class ComboScript : MonoBehaviour {
 
 	public string[] GetCombo (int p){
 		string thisCombo = combos[p];
-		string[] numbers = new string[thisCombo.Length];
-		for(int i=0; i<thisCombo.Length; i++){
+		string[] letters = thisCombo.Split(',');
+		string[] numbers = new string[letters.Length];
+		for(int i=0; i < letters.Length; i++){
 			// Convert letter to corresponding button number
-			char letter = thisCombo[i];
+			char letter = letters[i][0]; // Take first character since we might have whitespace
 			int buttonNum = GetButtonNumberFromLetter(letter);
 			numbers[i] = buttonNum.ToString();
 		}

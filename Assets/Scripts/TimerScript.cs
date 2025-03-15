@@ -79,8 +79,9 @@ public class TimerScript : MonoBehaviour {
 	public void Next() {
 		//PoseScript.S.ChangePose();
 		poseTimer = Time.time;
-		ComboScript.S.ChangeCombo();
-		ControlScript.S.Reset ();
+		
+		//ControlScript.S.Reset ();
+		FlowScript.S.Flow();
 
 	}
 }

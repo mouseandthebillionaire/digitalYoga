@@ -69,7 +69,7 @@ public class GameManagerScript : MonoBehaviour {
 		if (isTransitioning) yield break;
 		isTransitioning = true;
 
-		ComboScript.S.ChangeCombo();
+		//ComboScript.S.ChangeCombo();
 
 		// Maybe text here to introduce the pose?
 		yield return startWait;
@@ -83,7 +83,7 @@ public class GameManagerScript : MonoBehaviour {
 		StartCoroutine (TimerScript.S.SessionTimer ());
 		
 		while (!TimerScript.S.timesUp && currentState == GameState.Active) {
-			GetState ();
+			//GetState ();
 			yield return null;
 		}
 
@@ -122,6 +122,7 @@ public class GameManagerScript : MonoBehaviour {
 	public void StartGame(){
 		if (currentState == GameState.HomeScreen && !isTransitioning) {
 			Debug.Log ("Starting game");
+			FlowScript.S.NewPose(1);
 			currentState = GameState.Starting;
 		}
 	}
