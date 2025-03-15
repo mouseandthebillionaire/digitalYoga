@@ -65,15 +65,18 @@ public class FlowScript : MonoBehaviour {
 	}
 
 	public void Flow(){
-		// 50/50 chance between spawning new pose or moving existing location
-		if (Random.value < 0.4f) {
+		float rand = Random.value;
+		// 30% chance for new pose, 30% for move, 40% for modify
+		if (rand < 0.3f) {
 			// Generate random count between 1 and 5
 			int count = Random.Range(1, 6); // Range is inclusive of min, exclusive of max
 			Debug.Log($"Flow: Creating new pose with {count} locations");
 			NewPose(count);
-		} else {
+		} else if (rand < 0.6f && activeLocations.Count > 0) {  // 30% chance to move
 			Debug.Log("Flow: Moving random location");
 			MoveRandomLocation();
+		} else {  // 40% chance to modify (add/remove)
+			ModifyPose();
 		}
 	}
 
@@ -126,57 +129,65 @@ public class FlowScript : MonoBehaviour {
 		}
 	}
 
-	public void Add(string buttonNum){
-		numPressed += 1;
-		combo = ComboScript.S.currCombo;
-		buttonsPressed.Add(buttonNum);
-
-		// Find and add the pressed button to activeLocations
-		GameObject pressedButton = GameObject.Find(buttonNum);
-		if (pressedButton != null) {
-			activeLocations.Add(pressedButton);
-		}
-
-		if (System.Array.IndexOf(combo, buttonNum) != -1) {
-			numRight++;
-			mallets.PlayOneShot(mNotes[numRight]);
-		} else {
-			nope.Play();
-		}
-		if (numPressed == combo.Length) {
-			if (numRight == combo.Length) {
-				// Increase the score
-				ScoreScript.S.Score(1);
-			} else {
-				// Decrease the score!
-				ScoreScript.S.Score(-1); 
+	void ModifyPose() {
+		bool shouldAdd = Random.value < 0.5f;
+		
+		if (shouldAdd) {
+			Debug.Log("Flow: Adding new location");
+			if (locationsParent == null) {
+				Debug.LogError("FlowScript: Cannot add location - locationsParent is not set!");
+				return;
 			}
-		}
-	}
 
-	public void Remove(string buttonNum){
-		if(System.Array.IndexOf(combo, buttonNum) != -1){
-			if(numRight > 0) numRight--;
-		}
-		if (numPressed > 0) {
-			numPressed -= 1;
-			buttonsPressed.Remove(buttonNum);
-		}
-	}
+			GameObject go = GameObject.Instantiate(b) as GameObject;
+			Vector3 pos = Vector3.zero;
+			bool validPosition = false;
+			int attempts = 0;
+			int maxAttempts = 50;
 
-	public void Reset(){
-		numRight = 0;
-		numPressed = 0;
-		buttonsPressed.Clear();
-		
-		// Destroy all active locations
-		foreach (GameObject button in activeLocations) {
-			Destroy(button);
+			// Keep trying positions until we find one that's far enough from other locations
+			while (!validPosition && attempts < maxAttempts) {
+				float xPos = Random.Range(leftBuffer, rightBuffer);
+				float yPos = Random.Range(bottomBuffer, topBuffer);
+				pos = new Vector3(xPos, yPos, 0);
+				validPosition = true;
+
+				// Check distance from all existing locations
+				foreach (GameObject existingLocation in activeLocations) {
+					if (Vector3.Distance(existingLocation.transform.position, pos) < minLocationDistance) {
+						validPosition = false;
+						break;
+					}
+				}
+				attempts++;
+			}
+
+			go.transform.SetParent(locationsParent);
+			go.transform.position = pos;
+			go.transform.localScale = Vector3.one * locationSize;
+
+			go.name = activeLocations.Count.ToString();
+			activeLocations.Add(go);
+
+			if (attempts >= maxAttempts) {
+				Debug.LogWarning("Could not find position with minimum distance after " + maxAttempts + " attempts for new location");
+			}
+
+			Debug.Log($"Added new location. Total locations: {activeLocations.Count}");
+		} else {
+			if (activeLocations.Count == 0) {
+				Debug.Log("No locations to remove");
+				return;
+			}
+
+			// Remove a random location
+			int indexToRemove = Random.Range(0, activeLocations.Count);
+			GameObject locationToRemove = activeLocations[indexToRemove];
+			activeLocations.RemoveAt(indexToRemove);
+			
+			Destroy(locationToRemove);
+			Debug.Log($"Removed location. Remaining locations: {activeLocations.Count}");
 		}
-		activeLocations.Clear();
-		
-		// Broadcast Reset message to all circle scripts
-		locationsParent.BroadcastMessage("Reset", SendMessageOptions.DontRequireReceiver);
 	}
 
 	void MoveRandomLocation() {
@@ -228,6 +239,61 @@ public class FlowScript : MonoBehaviour {
 		if (fingerScript != null) {
 			fingerScript.OnLocationMoveComplete();
 		}
+	}
+
+	// Helper Functions
+
+	public void Add(string buttonNum){
+		numPressed += 1;
+		combo = ComboScript.S.currCombo;
+		buttonsPressed.Add(buttonNum);
+
+		// Find and add the pressed button to activeLocations
+		GameObject pressedButton = GameObject.Find(buttonNum);
+		if (pressedButton != null) {
+			activeLocations.Add(pressedButton);
+		}
+
+		if (System.Array.IndexOf(combo, buttonNum) != -1) {
+			numRight++;
+			mallets.PlayOneShot(mNotes[numRight]);
+		} else {
+			nope.Play();
+		}
+		if (numPressed == combo.Length) {
+			if (numRight == combo.Length) {
+				// Increase the score
+				ScoreScript.S.Score(1);
+			} else {
+				// Decrease the score!
+				ScoreScript.S.Score(-1); 
+			}
+		}
+	}
+
+	public void Remove(string buttonNum){
+		if(System.Array.IndexOf(combo, buttonNum) != -1){
+			if(numRight > 0) numRight--;
+		}
+		if (numPressed > 0) {
+			numPressed -= 1;
+			buttonsPressed.Remove(buttonNum);
+		}
+	}
+
+	public void Reset(){
+		numRight = 0;
+		numPressed = 0;
+		buttonsPressed.Clear();
+		
+		// Destroy all active locations
+		foreach (GameObject button in activeLocations) {
+			Destroy(button);
+		}
+		activeLocations.Clear();
+		
+		// Broadcast Reset message to all circle scripts
+		locationsParent.BroadcastMessage("Reset", SendMessageOptions.DontRequireReceiver);
 	}
 
 }
