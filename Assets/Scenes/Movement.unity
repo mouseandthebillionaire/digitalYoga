@@ -1426,7 +1426,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   t: 0
-  poseLength: 5
+  poseLength: 15
   timesUp: 1
   p: {fileID: 1371410415}
   timerText: {fileID: 1190477205}
@@ -1929,7 +1929,7 @@ MonoBehaviour:
   bottomMargin: 0.3
   leftMargin: 0.25
   rightMargin: 0.25
-  locationMoveTime: 3
+  locationMoveTime: 10
   b: {fileID: 4496844888917761531, guid: 7eeb6cfc823924fef906856263d47181, type: 3}
 --- !u!114 &1743167575
 MonoBehaviour:
