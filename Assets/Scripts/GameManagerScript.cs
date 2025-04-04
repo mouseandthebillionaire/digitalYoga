@@ -122,7 +122,7 @@ public class GameManagerScript : MonoBehaviour {
 	public void StartGame(){
 		if (currentState == GameState.HomeScreen && !isTransitioning) {
 			Debug.Log ("Starting game");
-			FlowScript.S.NewPose(2);
+			FlowScript.S.Flow();
 			currentState = GameState.Starting;
 		}
 	}

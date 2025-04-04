@@ -1426,7 +1426,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   t: 0
-  poseLength: 15
+  poseLength: 5
   timesUp: 1
   p: {fileID: 1371410415}
   timerText: {fileID: 1190477205}
@@ -1886,6 +1886,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1743167573}
   - component: {fileID: 1743167574}
+  - component: {fileID: 1743167575}
   m_Layer: 0
   m_Name: PoseControl
   m_TagString: Untagged
@@ -1921,25 +1922,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ec848ba545774fc3b43d9952317cb4d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  topBuffer: 2.5
-  bottomBuffer: -2.5
-  leftBuffer: -1.25
-  rightBuffer: 1.25
-  minLocationDistance: 0.25
-  locationMoveDistance: 2
+  gridWidth: 7
+  gridHeight: 14
+  cellSize: 1
+  topMargin: 0.5
+  bottomMargin: 0.3
+  leftMargin: 0.25
+  rightMargin: 0.25
   locationMoveTime: 3
-  locationSize: 1
   b: {fileID: 4496844888917761531, guid: 7eeb6cfc823924fef906856263d47181, type: 3}
-  buttonsPressed: []
-  combo: []
-  mallets: {fileID: 689868815}
-  nope: {fileID: 0}
-  mNotes:
-  - {fileID: 8300000, guid: ae4fa187519574939a914509db8c79f4, type: 3}
-  - {fileID: 8300000, guid: ea573998c6d6143f2b765330a483a9bc, type: 3}
-  - {fileID: 8300000, guid: 2ffde0ad8a31a4459b1fa41ccdcae48a, type: 3}
-  - {fileID: 8300000, guid: f9fcccc63d3d3438a9137a6d9420e057, type: 3}
-  - {fileID: 8300000, guid: 4f67e12975cd14a13a3f456b50367a8f, type: 3}
+--- !u!114 &1743167575
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1743167572}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 910fa254f2730455fad3ef7574644867, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentPose: 0
+  poseName: 
+  poseType: 
+  poseLocation: []
+  poseList: {fileID: 4900000, guid: e4c83edbfb9b24dc992cd1a9a6e5caaa, type: 3}
 --- !u!1 &1856992345
 GameObject:
   m_ObjectHideFlags: 0

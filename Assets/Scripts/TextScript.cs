@@ -19,8 +19,6 @@ public class TextScript : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		int p = ComboScript.c;
-		int l = ComboScript.currComboLength;
-		pose.text = "Current Pose: "+poses[p]+ " ("+ l +")";
+		pose.text = "Current Pose: "+ PoseControl.S.poseName;
 	}
 }

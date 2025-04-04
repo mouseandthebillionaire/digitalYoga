@@ -8,38 +8,39 @@ public class FlowScript : MonoBehaviour {
 
 	/* 
 	 * 
-	 * A version of the ControlScript that focses on Flow between poses
+	 * A version of the ControlScript that focuses on Flow between poses
+	 * Using a grid-based system for location placement
 	 * 
 	*/
 
-	public float					topBuffer = 4f;      // World space buffer from top
-	public float					bottomBuffer = -4f;   // World space buffer from bottom
-	public float					leftBuffer = -7f;     // World space buffer from left
-	public float					rightBuffer = 7f;     // World space buffer from right
-	public float					minLocationDistance = 2f;  // Minimum distance between locations in world units
-	public float					locationMoveDistance = 2f; // How far to move the location in world units
+	[Header("Grid Settings")]
+	public int					gridWidth = 12;
+	public int					gridHeight = 8;
+	public float				cellSize = 1f;  // Size of each grid cell in world units
+
+	[Header("Screen Edge Margins")]
+	public float					topMargin = 1f;      // Space between top of screen and grid
+	public float					bottomMargin = 1f;   // Space between bottom of screen and grid
+	public float					leftMargin = 1f;     // Space between left of screen and grid
+	public float					rightMargin = 1f;    // Space between right of screen and grid
+
+	[Header("Location Settings")]
 	public float					locationMoveTime = 1f;    // How long the movement takes
-	public float					locationSize = 1f;        // Size of locations in world units
 
 	public GameObject				b;
 	private Transform				locationsParent;
-
-	public List<string>				buttonsPressed = new List<string>();
-	public static int				numRight;
-	public static int				numPressed;
-
 	private List<GameObject>		activeLocations = new List<GameObject>();
-	public string[]					combo;
-
-	//Audio
-	public AudioSource				mallets, nope;
-	public AudioClip[]				mNotes;
+	private GridManager			gridManager;
 
 	public static FlowScript		S;
 
 	void Awake(){
 		S = this;
-		numPressed = 0;
+		
+		// Add GridManager component and initialize it
+		gridManager = gameObject.AddComponent<GridManager>();
+		gridManager.Initialize(gridWidth, gridHeight, cellSize, 
+							 topMargin, bottomMargin, leftMargin, rightMargin);
 	}
 
 	void Start () {
@@ -50,7 +51,8 @@ public class FlowScript : MonoBehaviour {
 		// Test spawning with number keys 1-9
 		for (int i = (int)KeyCode.Alpha1; i <= (int)KeyCode.Alpha9; i++) {
 			if (Input.GetKeyDown((KeyCode)i)) {
-				NewPose(i - (int)KeyCode.Alpha0); // Convert keycode to number (1-9)
+				PoseControl.S.SetPose(i - (int)KeyCode.Alpha0 - 1); // Convert keycode to pose index (0-based)
+				NewPose();
 			}
 		}
 
@@ -58,165 +60,230 @@ public class FlowScript : MonoBehaviour {
 			Reset();
 		}
 
-		// Press M to move a random location
+		// Press M to move to next pose
 		if(Input.GetKeyDown(KeyCode.M) && activeLocations.Count > 0){
-			MoveRandomLocation();
+			MovePose();
 		}
 	}
 
 	public void Flow(){
-		float rand = Random.value;
-		// 30% chance for new pose, 30% for move, 40% for modify
-		if (rand < 0.3f) {
-			// Generate random count between 1 and 5
-			int count = Random.Range(1, 6); // Range is inclusive of min, exclusive of max
-			Debug.Log($"Flow: Creating new pose with {count} locations");
-			NewPose(count);
-		} else if (rand < 0.6f && activeLocations.Count > 0) {  // 30% chance to move
-			Debug.Log("Flow: Moving random location");
-			MoveRandomLocation();
-		} else {  // 40% chance to modify (add/remove)
-			ModifyPose();
+		// Get PoseControl instance
+		PoseControl poseControl = PoseControl.S;
+		if (poseControl == null) {
+			Debug.LogError("FlowScript: Cannot flow - PoseControl singleton not found!");
+			return;
+		}
+
+		// Move to next pose
+		int nextPose = (poseControl.currentPose + 1) % poseControl.GetPoseCount();
+		poseControl.SetPose(nextPose);
+		Debug.Log($"Flow: Moved to pose {nextPose} ({poseControl.poseName})");
+
+		// Execute appropriate action based on pose type
+		switch (poseControl.poseType.ToLower()) {
+			case "new":
+				Debug.Log("Flow: Creating new pose");
+				NewPose();
+				break;
+			case "move":
+				if (activeLocations.Count > 0) {
+					Debug.Log("Flow: Moving locations to new positions");
+					MovePose();
+				} else {
+					Debug.LogWarning("Flow: Cannot move - no active locations");
+					NewPose(); // Fallback to creating new pose if no locations to move
+				}
+				break;
+			case "modify":
+				Debug.Log("Flow: Modifying current pose");
+				ModifyPose();
+				break;
+			default:
+				Debug.LogWarning($"Flow: Unknown pose type '{poseControl.poseType}', defaulting to new pose");
+				NewPose();
+				break;
 		}
 	}
 
-	public void NewPose(int count) {
-		Debug.Log("NewPose called with count: " + count);
+	public void NewPose() {
 		if (locationsParent == null) {
 			Debug.LogError("FlowScript: Cannot spawn locations - locationsParent is not set!");
 			return;
 		}
 
-		// Clear existing locations before spawning new ones
+		// Get current pose from PoseControl
+		PoseControl poseControl = PoseControl.S;
+		if (poseControl == null) {
+			Debug.LogError("FlowScript: Cannot create pose - PoseControl singleton not found!");
+			return;
+		}
+
+		// Clear existing locations
 		Reset();
 
-		int maxAttempts = 50; // Maximum attempts to find a valid position
+		// Get pose locations from PoseControl
+		Vector2[] poseLocations = poseControl.poseLocation;
+		if (poseLocations == null || poseLocations.Length == 0) {
+			Debug.LogError("FlowScript: No pose locations defined in PoseControl!");
+			return;
+		}
 
-		for (int i = 0; i < count; i++) {
+		// Create new locations based on pose data
+		for (int i = 0; i < poseLocations.Length; i++) {
+			Vector2 poseLoc = poseLocations[i];
+			
+			// Convert pose location to row/col
+			int row = Mathf.RoundToInt(poseLoc.y); // y coordinate maps to row
+			int col = Mathf.RoundToInt(poseLoc.x); // x coordinate maps to column
+
+			// Validate grid position
+			if (row < 0 || row >= gridHeight || col < 0 || col >= gridWidth) {
+				Debug.LogWarning($"Invalid pose location at index {i}: ({row}, {col}). Skipping.");
+				continue;
+			}
+
+			// Create location at specified position
 			GameObject go = GameObject.Instantiate(b) as GameObject;
-			Vector3 pos = Vector3.zero;
-			bool validPosition = false;
-			int attempts = 0;
-
-			// Keep trying positions until we find one that's far enough from other locations
-			while (!validPosition && attempts < maxAttempts) {
-				// Calculate random position within world space bounds
-				float xPos = Random.Range(leftBuffer, rightBuffer);
-				float yPos = Random.Range(bottomBuffer, topBuffer);
-				pos = new Vector3(xPos, yPos, 0);
-				validPosition = true;
-
-				// Check distance from all existing locations
-				foreach (GameObject existingLocation in activeLocations) {
-					if (Vector3.Distance(existingLocation.transform.position, pos) < minLocationDistance) {
-						validPosition = false;
-						break;
-					}
-				}
-				attempts++;
-			}
-
 			go.transform.SetParent(locationsParent);
-			go.transform.position = pos;
-			go.transform.localScale = Vector3.one * locationSize;
-
+			go.transform.position = gridManager.GridToWorld(row, col);
 			go.name = i.ToString();
+			
 			activeLocations.Add(go);
-
-			if (attempts >= maxAttempts) {
-				Debug.LogWarning("Could not find position with minimum distance after " + maxAttempts + " attempts for location " + i);
-			}
+			Debug.Log($"Created location {i} at row {row}, col {col}");
 		}
 	}
 
 	void ModifyPose() {
-		bool shouldAdd = Random.value < 0.5f;
-		
-		if (shouldAdd) {
-			Debug.Log("Flow: Adding new location");
-			if (locationsParent == null) {
-				Debug.LogError("FlowScript: Cannot add location - locationsParent is not set!");
-				return;
-			}
+		// Get current pose from PoseControl
+		PoseControl poseControl = PoseControl.S;
+		if (poseControl == null) {
+			Debug.LogError("FlowScript: Cannot modify pose - PoseControl singleton not found!");
+			return;
+		}
 
-			GameObject go = GameObject.Instantiate(b) as GameObject;
-			Vector3 pos = Vector3.zero;
-			bool validPosition = false;
-			int attempts = 0;
-			int maxAttempts = 50;
+		// Get current pose locations
+		Vector2[] poseLocations = poseControl.poseLocation;
+		if (poseLocations == null || poseLocations.Length == 0) {
+			Debug.LogError("FlowScript: No pose locations defined in current pose!");
+			return;
+		}
 
-			// Keep trying positions until we find one that's far enough from other locations
-			while (!validPosition && attempts < maxAttempts) {
-				float xPos = Random.Range(leftBuffer, rightBuffer);
-				float yPos = Random.Range(bottomBuffer, topBuffer);
-				pos = new Vector3(xPos, yPos, 0);
-				validPosition = true;
-
-				// Check distance from all existing locations
-				foreach (GameObject existingLocation in activeLocations) {
-					if (Vector3.Distance(existingLocation.transform.position, pos) < minLocationDistance) {
-						validPosition = false;
+		// Compare current active locations with pose locations
+		if (activeLocations.Count < poseLocations.Length) {
+			// Add a new location from the pose data
+			for (int i = 0; i < poseLocations.Length; i++) {
+				// Check if this pose location is already used
+				bool locationExists = false;
+				foreach (GameObject loc in activeLocations) {
+					Vector3 pos = loc.transform.position;
+					Vector2Int gridPos = gridManager.WorldToGrid(pos);
+					Vector2 posePos = new Vector2(gridPos.y, gridPos.x); // Convert to pose format (col/row)
+					
+					if (posePos == poseLocations[i]) {
+						locationExists = true;
 						break;
 					}
 				}
-				attempts++;
+
+				if (!locationExists) {
+					Vector2 newPos = poseLocations[i];
+					int row = Mathf.RoundToInt(newPos.y);
+					int col = Mathf.RoundToInt(newPos.x);
+
+					if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth) {
+						GameObject go = GameObject.Instantiate(b) as GameObject;
+						go.transform.SetParent(locationsParent);
+						go.transform.position = gridManager.GridToWorld(row, col);
+						go.name = activeLocations.Count.ToString();
+						
+						activeLocations.Add(go);
+						Debug.Log($"Added new location at row {row}, col {col}");
+						return; // Only add one location at a time
+					}
+				}
 			}
-
-			go.transform.SetParent(locationsParent);
-			go.transform.position = pos;
-			go.transform.localScale = Vector3.one * locationSize;
-
-			go.name = activeLocations.Count.ToString();
-			activeLocations.Add(go);
-
-			if (attempts >= maxAttempts) {
-				Debug.LogWarning("Could not find position with minimum distance after " + maxAttempts + " attempts for new location");
-			}
-
-			Debug.Log($"Added new location. Total locations: {activeLocations.Count}");
 		} else {
-			if (activeLocations.Count == 0) {
-				Debug.Log("No locations to remove");
-				return;
-			}
+			// Remove a location that doesn't match any pose location
+			for (int i = activeLocations.Count - 1; i >= 0; i--) {
+				GameObject loc = activeLocations[i];
+				Vector3 pos = loc.transform.position;
+				Vector2Int gridPos = gridManager.WorldToGrid(pos);
+				Vector2 posePos = new Vector2(gridPos.y, gridPos.x); // Convert to pose format (col/row)
 
-			// Remove a random location
-			int indexToRemove = Random.Range(0, activeLocations.Count);
-			GameObject locationToRemove = activeLocations[indexToRemove];
-			activeLocations.RemoveAt(indexToRemove);
-			
-			Destroy(locationToRemove);
-			Debug.Log($"Removed location. Remaining locations: {activeLocations.Count}");
+				bool matchesAnyPoseLocation = false;
+				foreach (Vector2 poseLocation in poseLocations) {
+					if (posePos == poseLocation) {
+						matchesAnyPoseLocation = true;
+						break;
+					}
+				}
+
+				if (!matchesAnyPoseLocation) {
+					activeLocations.RemoveAt(i);
+					Destroy(loc);
+					Debug.Log($"Removed location at index {i}");
+					return; // Only remove one location at a time
+				}
+			}
 		}
 	}
 
-	void MoveRandomLocation() {
+	void MovePose() {
 		if (activeLocations.Count == 0) return;
 
-		// Select a random location
-		int randomIndex = Random.Range(0, activeLocations.Count);
-		GameObject locationToMove = activeLocations[randomIndex];
+		// Get PoseControl instance
+		PoseControl poseControl = PoseControl.S;
+		if (poseControl == null) {
+			Debug.LogError("FlowScript: Cannot move locations - PoseControl singleton not found!");
+			return;
+		}
+
+		// Get current pose locations
+		Vector2[] currentPoseLocations = poseControl.poseLocation;
+		if (currentPoseLocations == null || currentPoseLocations.Length == 0) {
+			Debug.LogError("FlowScript: No pose locations defined in current pose!");
+			return;
+		}
+
+		// Get previous pose locations
+		int previousPoseIndex = (poseControl.currentPose - 1 + poseControl.GetPoseCount()) % poseControl.GetPoseCount();
+		Vector2[] previousPoseLocations = poseControl.GetPoseLocations(previousPoseIndex);
 		
-		// Start the movement coroutine
-		StartCoroutine(MoveLocationCoroutine(locationToMove));
+		Debug.Log($"Moving from pose {previousPoseIndex} to pose {poseControl.currentPose}");
+
+		// Find locations that have changed position
+		for (int i = 0; i < Mathf.Min(previousPoseLocations.Length, activeLocations.Count); i++) {
+			if (i >= currentPoseLocations.Length) break;
+
+			Vector2 prevPos = previousPoseLocations[i];
+			Vector2 newPos = currentPoseLocations[i];
+
+			// If position has changed, move the location
+			if (prevPos != newPos) {
+				GameObject locationToMove = activeLocations[i];
+				
+				// Convert pose coordinates to grid coordinates
+				int row = Mathf.RoundToInt(newPos.y);
+				int col = Mathf.RoundToInt(newPos.x);
+
+				// Validate new position
+				if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth) {
+					Vector3 targetPos = gridManager.GridToWorld(row, col);
+					
+					Debug.Log($"Moving location {i} from ({prevPos.x}, {prevPos.y}) to ({newPos.x}, {newPos.y})");
+					StartCoroutine(MoveLocationCoroutine(locationToMove, targetPos));
+				} else {
+					Debug.LogWarning($"Invalid target position for location {i}: ({row}, {col})");
+				}
+			}
+		}
 	}
 
-	IEnumerator MoveLocationCoroutine(GameObject location) {
+	IEnumerator MoveLocationCoroutine(GameObject location, Vector3 targetPos) {
 		Vector3 startPos = location.transform.position;
-		
-		// Choose a random direction
-		float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-		Vector3 moveDirection = new Vector3(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle), 0).normalized;
-		Vector3 targetPos = startPos + (moveDirection * locationMoveDistance);
-
-		// Clamp target position to stay within world space bounds
-		targetPos.x = Mathf.Clamp(targetPos.x, leftBuffer, rightBuffer);
-		targetPos.y = Mathf.Clamp(targetPos.y, bottomBuffer, topBuffer);
-
 		float elapsedTime = 0f;
 		FingerScript fingerScript = location.GetComponent<FingerScript>();
 		
-		// Notify FingerScript that movement is starting
 		if (fingerScript != null) {
 			fingerScript.OnLocationMoveStart();
 		}
@@ -235,57 +302,12 @@ public class FlowScript : MonoBehaviour {
 		// Ensure we end up exactly at the target position
 		location.transform.position = targetPos;
 
-		// Notify FingerScript that movement is complete
 		if (fingerScript != null) {
 			fingerScript.OnLocationMoveComplete();
 		}
 	}
 
-	// Helper Functions
-
-	public void Add(string buttonNum){
-		numPressed += 1;
-		combo = ComboScript.S.currCombo;
-		buttonsPressed.Add(buttonNum);
-
-		// Find and add the pressed button to activeLocations
-		GameObject pressedButton = GameObject.Find(buttonNum);
-		if (pressedButton != null) {
-			activeLocations.Add(pressedButton);
-		}
-
-		if (System.Array.IndexOf(combo, buttonNum) != -1) {
-			numRight++;
-			mallets.PlayOneShot(mNotes[numRight]);
-		} else {
-			nope.Play();
-		}
-		if (numPressed == combo.Length) {
-			if (numRight == combo.Length) {
-				// Increase the score
-				ScoreScript.S.Score(1);
-			} else {
-				// Decrease the score!
-				ScoreScript.S.Score(-1); 
-			}
-		}
-	}
-
-	public void Remove(string buttonNum){
-		if(System.Array.IndexOf(combo, buttonNum) != -1){
-			if(numRight > 0) numRight--;
-		}
-		if (numPressed > 0) {
-			numPressed -= 1;
-			buttonsPressed.Remove(buttonNum);
-		}
-	}
-
 	public void Reset(){
-		numRight = 0;
-		numPressed = 0;
-		buttonsPressed.Clear();
-		
 		// Destroy all active locations
 		foreach (GameObject button in activeLocations) {
 			Destroy(button);

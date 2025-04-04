@@ -1,0 +1,8 @@
+Resting Center,New,3/7
+Advancing Accusation,Move,3/1
+Triangle,New,3/1,0/8,6/8
+Triangle's Friend,Modify,3/1,0/8,6/8,5/3
+Triangle,Modify,3/1,0/8,6/8
+Triangle's Other Friend,Modify,3/1,0/8,6/8,1/3
+Triangle,Modify,3/1,0/8,6/8
+Tripod,Move,3/2,1/8,5/8
